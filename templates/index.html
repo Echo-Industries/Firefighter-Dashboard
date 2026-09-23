@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Station Command Fire & Medical Portal</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/RCFRLogo-removebg-preview.png') }}">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#000000',
+                        darkcard: '#0a0a0a',
+                        darkborder: '#1f1f1f',
+                        accentred: '#dc2626',
+                        accentglow: 'rgba(220, 38, 38, 0.15)'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #000000; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #404040; }
+        .glow-red { box-shadow: 0 0 25px rgba(220, 38, 38, 0.2); }
+        .glow-card { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8); border: 1px solid #1f1f1f; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navbar -->
+    <header class="bg-darkcard border-b border-darkborder sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center glow-red">
+                <img src="{{ url_for('static', filename='images/RCFRLogo-removebg-preview.png') }}" alt="RCFD Logo" class="w-full h-full object-contain">
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wider text-white">STATION COMMAND</h1>
+                <p class="text-xs text-red-500 font-semibold tracking-widest uppercase">Seattle Fire & Rescue</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="hidden md:flex items-center space-x-2 bg-neutral-900 border border-neutral-800 px-3 py-1.5 rounded-lg text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-neutral-400">Dispatcher:</span>
+                <span id="currentUserName" class="text-white font-medium">Seattle 911 Command Center</span>
+            </div>
+            <a id="authButton" href="/auth/roblox/login" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">Sign in with Roblox</a>
+            <a id="logoutButton" href="/auth/logout" class="hidden bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 px-3 py-1.5 rounded-lg text-xs font-medium transition">Sign out</a>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col md:flex-row">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-darkcard border-r border-darkborder p-4 flex flex-row md:flex-col justify-between overflow-x-auto">
+            <nav class="flex md:flex-col space-x-2 md:space-x-0 md:space-y-1 w-full">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition bg-red-600 text-white glow-red">
+                    <i class="fa-solid fa-chart-pie w-5"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="switchTab('fire-log')" id="nav-fire-log" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                    <i class="fa-solid fa-fire w-5 text-red-500"></i>
+                    <span>Log Fire Report</span>
+                </button>
+                <button onclick="switchTab('med-log')" id="nav-med-log" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                    <i class="fa-solid fa-suitcase-medical w-5 text-emerald-500"></i>
+                    <span>Log Medical Case</span>
+                </button>
+                <button onclick="switchTab('records')" id="nav-records" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                    <i class="fa-solid fa-folder-open w-5 text-amber-500"></i>
+                    <span>Search Records</span>
+                </button>
+                <button onclick="switchTab('map')" id="nav-map" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                    <i class="fa-solid fa-map-location-dot w-5 text-blue-500"></i>
+                    <span>Tactical Map</span>
+                </button>
+                <button onclick="switchTab('erlc-hub')" id="nav-erlc-hub" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                    <i class="fa-solid fa-tower-broadcast w-5 text-purple-500"></i>
+                    <span>ER:LC Live Hub</span>
+                </button>
+                <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-3 transition text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                    <i class="fa-solid fa-chart-line w-5 text-cyan-500"></i>
+                    <span>Analytics</span>
+                </button>
+            </nav>
+
+            <div class="hidden md:block pt-4 border-t border-darkborder mt-auto">
+                <div class="bg-neutral-900/60 p-3 rounded-xl border border-darkborder text-xs text-neutral-400">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-white font-medium">Server Status</span>
+                        <span id="serverStatusBadge" class="text-emerald-400 font-semibold">Online</span>
+                    </div>
+                    <p class="text-[11px] text-neutral-500">Connected to ER:LC API</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto">
+
+            <!-- TAB 1: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-content space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight text-white">Station Overview</h2>
+                        <p class="text-sm text-neutral-400">Real-time telemetry and department incident summaries.</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="switchTab('fire-log')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plus"></i><span>New Fire Report</span>
+                        </button>
+                        <button onclick="switchTab('med-log')" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plus"></i><span>New Medical Case</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-darkcard p-5 rounded-2xl glow-card">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Total Fire Records</span>
+                            <div class="w-10 h-10 rounded-xl bg-red-950/60 text-red-500 flex items-center justify-center border border-red-900/30">
+                                <i class="fa-solid fa-fire text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="kpiTotalFires" class="text-3xl font-bold text-white">0</span>
+                            <span class="ml-2 text-xs text-neutral-400" id="kpiFireRange">Starting at F00001</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkcard p-5 rounded-2xl glow-card">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Medical Incident Records</span>
+                            <div class="w-10 h-10 rounded-xl bg-emerald-950/60 text-emerald-500 flex items-center justify-center border border-emerald-900/30">
+                                <i class="fa-solid fa-suitcase-medical text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="kpiTotalMeds" class="text-3xl font-bold text-white">0</span>
+                            <span class="ml-2 text-xs text-neutral-400">Starting at MED00001</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkcard p-5 rounded-2xl glow-card">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Patient Survival Rate</span>
+                            <div class="w-10 h-10 rounded-xl bg-cyan-950/60 text-cyan-500 flex items-center justify-center border border-cyan-900/30">
+                                <i class="fa-solid fa-heart-pulse text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="kpiSurvivalRate" class="text-3xl font-bold text-white">100%</span>
+                            <span class="ml-2 text-xs text-emerald-400 font-medium">Stable</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkcard p-5 rounded-2xl glow-card">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Active Units on Duty</span>
+                            <div class="w-10 h-10 rounded-xl bg-amber-950/60 text-amber-500 flex items-center justify-center border border-amber-900/30">
+                                <i class="fa-solid fa-truck-ramp-box text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-baseline">
+                            <span id="kpiActiveUnits" class="text-3xl font-bold text-white">--</span>
+                            <span class="ml-2 text-xs text-neutral-400">Engines & Medics</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Tables -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-darkcard p-6 rounded-2xl glow-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-fire text-red-500"></i>
+                                <span>Recent Fire Reports</span>
+                            </h3>
+                            <button onclick="switchTab('records')" class="text-xs text-red-500 hover:text-red-400 font-medium">View All</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="border-b border-darkborder text-xs text-neutral-500 uppercase">
+                                    <tr>
+                                        <th class="py-2 px-3">Case #</th>
+                                        <th class="py-2 px-3">Type</th>
+                                        <th class="py-2 px-3">Damage</th>
+                                        <th class="py-2 px-3">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentFireTableBody" class="divide-y divide-darkborder text-neutral-300">
+                                    <tr><td colspan="4" class="py-4 text-center text-neutral-500 text-xs">No fire logs recorded yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkcard p-6 rounded-2xl glow-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-suitcase-medical text-emerald-500"></i>
+                                <span>Recent Medical Cases</span>
+                            </h3>
+                            <button onclick="switchTab('records')" class="text-xs text-emerald-500 hover:text-emerald-400 font-medium">View All</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="border-b border-darkborder text-xs text-neutral-500 uppercase">
+                                    <tr>
+                                        <th class="py-2 px-3">Case #</th>
+                                        <th class="py-2 px-3">Patient</th>
+                                        <th class="py-2 px-3">Condition</th>
+                                        <th class="py-2 px-3">Survived</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentMedTableBody" class="divide-y divide-darkborder text-neutral-300">
+                                    <tr><td colspan="4" class="py-4 text-center text-neutral-500 text-xs">No medical cases recorded yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: LOG FIRE REPORT -->
+            <section id="tab-fire-log" class="tab-content hidden space-y-6 max-w-3xl mx-auto">
+                <div>
+                    <h2 class="text-2xl font-bold tracking-tight text-white">Log Fire Incident</h2>
+                    <p class="text-sm text-neutral-400">Fill out response data. Case number is auto-assigned sequentially.</p>
+                </div>
+
+                <form id="fireReportForm" onsubmit="submitFireReport(event)" class="bg-darkcard p-6 md:p-8 rounded-2xl glow-card space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Assigned Case Number</label>
+                            <input type="text" id="fireCaseNum" readonly class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Type of Fire</label>
+                            <select id="fireType" required class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-600">
+                                <option value="Structure">Structure Fire</option>
+                                <option value="Brush">Brush / Wildfire</option>
+                                <option value="Dumpster">Dumpster / Trash</option>
+                                <option value="Vehicle">Vehicle Fire</option>
+                                <option value="Industrial">Industrial / Hazmat</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Estimated Extinguishing Time (Minutes)</label>
+                            <input type="number" id="fireExtTime" min="1" value="15" required class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Level of Damage Estimate</label>
+                            <select id="fireDamage" required class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-600">
+                                <option value="Low">Low (Minor / Contained)</option>
+                                <option value="Medium" selected>Medium (Moderate Loss)</option>
+                                <option value="High">High (Severe / Total Loss)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Other Units Responded</label>
+                        <input type="text" id="fireUnits" placeholder="e.g. Engine 7, Ladder 2, Rescue 4" class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-600">
+                        <p class="text-[11px] text-neutral-500 mt-1">Note: Your active profile name is automatically recorded as responding.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Optional Notes & Remarks</label>
+                        <textarea id="fireNotes" rows="3" placeholder="Enter tactical observations, cause of fire, or hazards encountered..." class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-600"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-darkborder">
+                        <button type="button" onclick="switchTab('dashboard')" class="px-5 py-2.5 rounded-xl text-sm font-medium bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition">Cancel</button>
+                        <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition glow-red">Publish Fire Report</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- TAB 3: LOG MEDICAL CASE -->
+            <section id="tab-med-log" class="tab-content hidden space-y-6 max-w-3xl mx-auto">
+                <div>
+                    <h2 class="text-2xl font-bold tracking-tight text-white">Log Medical Case</h2>
+                    <p class="text-sm text-neutral-400">EMS incident documentation. Case number is auto-assigned sequentially.</p>
+                </div>
+
+                <form id="medReportForm" onsubmit="submitMedicalReport(event)" class="bg-darkcard p-6 md:p-8 rounded-2xl glow-card space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Assigned Case Number</label>
+                            <input type="text" id="medCaseNum" readonly class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Patient Type</label>
+                            <select id="medPatientType" required class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-600">
+                                <option value="NPC">NPC (Civilian Citizen)</option>
+                                <option value="User">User / Player</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Injury or Condition</label>
+                            <input type="text" id="medCondition" placeholder="e.g. Smoke inhalation, Cardiac arrest, Trauma" required class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Did the Patient Survive?</label>
+                            <select id="medSurvived" required class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-600">
+                                <option value="Yes">Yes (Transported / Stable)</option>
+                                <option value="No">No (Expired on Scene)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Other Units Responded</label>
+                        <input type="text" id="medUnits" placeholder="e.g. Medic 1, Rescue 7" class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-600">
+                        <p class="text-[11px] text-neutral-500 mt-1">Note: Your active profile name is automatically recorded as responding.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Optional Notes & Treatment Provided</label>
+                        <textarea id="medNotes" rows="3" placeholder="Enter treatment given, transport hospital, or vitals..." class="w-full bg-neutral-900 border border-darkborder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-600"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-darkborder">
+                        <button type="button" onclick="switchTab('dashboard')" class="px-5 py-2.5 rounded-xl text-sm font-medium bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition">Cancel</button>
+                        <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition">Publish Medical Case</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- TAB 4: SEARCH RECORDS -->
+            <section id="tab-records" class="tab-content hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight text-white">Incident Records & Search</h2>
+                        <p class="text-sm text-neutral-400">Search, browse, and inspect all logged fire and medical reports.</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-neutral-500 text-sm"></i>
+                            <input type="text" id="recordSearchInput" oninput="filterRecords()" placeholder="Search case #, units, type..." class="bg-darkcard border border-darkborder rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-red-600 w-64">
+                        </div>
+                        <select id="recordFilterType" onchange="filterRecords()" class="bg-darkcard border border-darkborder rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                            <option value="all">All Records</option>
+                            <option value="fire">Fire Reports Only</option>
+                            <option value="medical">Medical Cases Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-darkcard rounded-2xl glow-card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-neutral-900/80 border-b border-darkborder text-xs text-neutral-400 uppercase">
+                                <tr>
+                                    <th class="py-3 px-4">Case #</th>
+                                    <th class="py-3 px-4">Category</th>
+                                    <th class="py-3 px-4">Details / Condition</th>
+                                    <th class="py-3 px-4">Units Responded</th>
+                                    <th class="py-3 px-4">Timestamp</th>
+                                    <th class="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterRecordsTable" class="divide-y divide-darkborder text-neutral-300">
+                                <tr><td colspan="6" class="py-8 text-center text-neutral-500">No records found in database.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: TACTICAL MAP -->
+            <section id="tab-map" class="tab-content hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight text-white">GIS Infrastructure & Tactical Map</h2>
+                        <p class="text-sm text-neutral-400">King County district grid layout featuring hydrants, gas shutoffs, panels, and alarms.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-darkcard border border-darkborder px-3 py-1.5 rounded-xl text-xs text-neutral-400">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span>Map Asset Loaded: King County, Washington</span>
+                    </div>
+                </div>
+
+                <div class="bg-darkcard p-4 rounded-2xl glow-card border border-darkborder flex flex-col items-center justify-center">
+                    <div class="relative w-full max-w-4xl overflow-hidden rounded-xl border border-neutral-800 bg-black flex items-center justify-center">
+                        <img src={{ url_for('static', filename='images/Firefighter-Tactical-Map-Asset.png') }} alt="Firefighter Tactical Map Asset" class="w-full h-auto object-contain max-h-[75vh]">
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: ER:LC LIVE HUB -->
+            <section id="tab-erlc-hub" class="tab-content hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight text-white">ER:LC Live Telemetry Hub</h2>
+                        <p class="text-sm text-neutral-400">Live active players, emergency dispatches, and spawned units fetched via Python backend proxy.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-neutral-900 border border-neutral-800 px-3 py-2 rounded-xl text-xs text-neutral-400">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Live server sync</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-darkcard p-6 rounded-2xl glow-card lg:col-span-2 space-y-4">
+                        <h3 class="font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-users text-purple-500"></i>
+                            <span>Active Fire & EMS Personnel</span>
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="border-b border-darkborder text-xs text-neutral-500 uppercase">
+                                    <tr>
+                                        <th class="py-2 px-3">Player Name</th>
+                                        <th class="py-2 px-3">Callsign</th>
+                                        <th class="py-2 px-3">Team</th>
+                                        <th class="py-2 px-3">Vehicle</th>
+                                        <th class="py-2 px-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="erlcUnitsTable" class="divide-y divide-darkborder text-neutral-300">
+                                    <tr><td colspan="5" class="py-6 text-center text-neutral-500 text-xs">Connecting to the live ER:LC server...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkcard p-6 rounded-2xl glow-card space-y-4">
+                        <h3 class="font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-tower-cell text-cyan-500"></i>
+                            <span>Server API Status</span>
+                        </h3>
+                        <div class="space-y-3 text-xs text-neutral-400">
+                            <div class="flex justify-between py-2 border-b border-darkborder">
+                                <span>Proxy Connection:</span>
+                                <span id="proxyState" class="text-amber-400 font-medium">Connecting...</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-darkborder">
+                                <span>Server Name:</span>
+                                <span id="serverNameLabel" class="text-white font-medium">--</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-darkborder">
+                                <span>Total Players:</span>
+                                <span id="serverPlayerCount" class="text-white font-medium">--</span>
+                            </div>
+                            <div class="flex justify-between py-2">
+                                <span>Active Calls:</span>
+                                <span id="serverCallCount" class="text-white font-medium">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 7: ANALYTICS -->
+            <section id="tab-analytics" class="tab-content hidden space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold tracking-tight text-white">Department Analytics & Reports</h2>
+                    <p class="text-sm text-neutral-400">Interactive charts tracking fire incidents breakdown and medical survival metrics.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-darkcard p-6 rounded-2xl glow-card">
+                        <h3 class="font-bold text-white mb-4 text-sm">Fire Type Distribution</h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="fireTypeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-darkcard p-6 rounded-2xl glow-card">
+                        <h3 class="font-bold text-white mb-4 text-sm">Medical Survival Rate</h3>
+                        <div class="h-64 flex items-center justify-center">
+                            <canvas id="medSurvivalChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Data State Store
+        let appState = {
+            fires: [],
+            medicals: [],
+            fireSeq: 1,
+            medSeq: 1
+        };
+
+        let charts = {
+            fire: null,
+            med: null
+        };
+
+        let erlcSyncInFlight = false;
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAuth();
+            await loadRecords();
+            await syncERLCData();
+            window.setInterval(syncERLCData, 5000);
+            updateCaseNumberFields();
+            updateDashboard();
+        });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('bg-red-600', 'text-white', 'glow-red');
+                el.classList.add('text-neutral-400', 'hover:bg-neutral-900', 'hover:text-white');
+            });
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            const targetNav = document.getElementById(`nav-${tabId}`);
+
+            if (targetTab) targetTab.classList.remove('hidden');
+            if (targetNav) {
+                targetNav.classList.remove('text-neutral-400', 'hover:bg-neutral-900', 'hover:text-white');
+                targetNav.classList.add('bg-red-600', 'text-white', 'glow-red');
+            }
+
+            if (tabId === 'records') renderRecordsTable();
+            if (tabId === 'analytics') renderAnalyticsCharts();
+        }
+
+        function updateCaseNumberFields() {
+            const fireNum = 'F' + String(appState.fireSeq).padStart(5, '0');
+            const medNum = 'MED' + String(appState.medSeq).padStart(5, '0');
+            
+            const fireField = document.getElementById('fireCaseNum');
+            const medField = document.getElementById('medCaseNum');
+            
+            if (fireField) fireField.value = fireNum;
+            if (medField) medField.value = medNum;
+        }
+
+        async function submitFireReport(e) {
+            e.preventDefault();
+            const userName = 'Seattle 911 Command Center';
+            const otherUnits = document.getElementById('fireUnits').value.trim();
+            const unitsResponded = otherUnits ? `${userName}, ${otherUnits}` : userName;
+
+            const newReport = {
+                id: 'F' + String(appState.fireSeq).padStart(5, '0'),
+                category: 'fire',
+                type: document.getElementById('fireType').value,
+                extTime: document.getElementById('fireExtTime').value,
+                damage: document.getElementById('fireDamage').value,
+                units: unitsResponded,
+                notes: document.getElementById('fireNotes').value,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
+            };
+
+            if (!await publishRecord(newReport)) return;
+            appState.fireSeq++;
+            await loadRecords();
+            updateCaseNumberFields();
+            document.getElementById('fireReportForm').reset();
+            updateDashboard();
+            switchTab('dashboard');
+        }
+
+        async function submitMedicalReport(e) {
+            e.preventDefault();
+            const userName = 'Seattle 911 Command Center';
+            const otherUnits = document.getElementById('medUnits').value.trim();
+            const unitsResponded = otherUnits ? `${userName}, ${otherUnits}` : userName;
+
+            const newReport = {
+                id: 'MED' + String(appState.medSeq).padStart(5, '0'),
+                category: 'medical',
+                patientType: document.getElementById('medPatientType').value,
+                condition: document.getElementById('medCondition').value,
+                survived: document.getElementById('medSurvived').value,
+                units: unitsResponded,
+                notes: document.getElementById('medNotes').value,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
+            };
+
+            if (!await publishRecord(newReport)) return;
+            appState.medSeq++;
+            await loadRecords();
+            updateCaseNumberFields();
+            document.getElementById('medReportForm').reset();
+            updateDashboard();
+            switchTab('dashboard');
+        }
+
+        function updateDashboard() {
+            document.getElementById('kpiTotalFires').innerText = appState.fires.length;
+            document.getElementById('kpiTotalMeds').innerText = appState.medicals.length;
+            
+            // Survival rate calc
+            if (appState.medicals.length > 0) {
+                const survivedCount = appState.medicals.filter(m => m.survived === 'Yes').length;
+                const rate = Math.round((survivedCount / appState.medicals.length) * 100);
+                document.getElementById('kpiSurvivalRate').innerText = rate + '%';
+            } else {
+                document.getElementById('kpiSurvivalRate').innerText = '100%';
+            }
+
+            // Recent Fire Table
+            const fireBody = document.getElementById('recentFireTableBody');
+            if (appState.fires.length === 0) {
+                fireBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-neutral-500 text-xs">No fire logs recorded yet.</td></tr>`;
+            } else {
+                fireBody.innerHTML = appState.fires.slice(0, 5).map(f => `
+                    <tr class="hover:bg-neutral-900/50">
+                        <td class="py-3 px-3 font-mono text-red-500 font-semibold">${f.id}</td>
+                        <td class="py-3 px-3">${f.type}</td>
+                        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-xs ${f.damage === 'High' ? 'bg-red-950 text-red-400' : 'bg-neutral-800 text-neutral-300'}">${f.damage}</span></td>
+                        <td class="py-3 px-3 text-neutral-400 text-xs">${f.timestamp}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Recent Medical Table
+            const medBody = document.getElementById('recentMedTableBody');
+            if (appState.medicals.length === 0) {
+                medBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-neutral-500 text-xs">No medical cases recorded yet.</td></tr>`;
+            } else {
+                medBody.innerHTML = appState.medicals.slice(0, 5).map(m => `
+                    <tr class="hover:bg-neutral-900/50">
+                        <td class="py-3 px-3 font-mono text-emerald-500 font-semibold">${m.id}</td>
+                        <td class="py-3 px-3">${m.patientType}</td>
+                        <td class="py-3 px-3 truncate max-w-[140px]" title="${m.condition}">${m.condition}</td>
+                        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-xs ${m.survived === 'Yes' ? 'bg-emerald-950 text-emerald-400' : 'bg-red-950 text-red-400'}">${m.survived}</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function renderRecordsTable() {
+            const tableBody = document.getElementById('masterRecordsTable');
+            const search = document.getElementById('recordSearchInput').value.toLowerCase();
+            const filter = document.getElementById('recordFilterType').value;
+
+            let allRecords = [
+                ...appState.fires.map(f => ({ ...f, displayType: 'Fire Report', detail: `${f.type} Fire (${f.damage} Damage, ${f.extTime}m)` })),
+                ...appState.medicals.map(m => ({ ...m, displayType: 'Medical Case', detail: `${m.condition} [Survived: ${m.survived}]` }))
+            ];
+
+            // Sort by sequence or timestamp descending
+            allRecords.sort((a, b) => b.id.localeCompare(a.id));
+
+            // Apply filters
+            if (filter !== 'all') {
+                allRecords = allRecords.filter(r => r.category === filter);
+            }
+
+            if (search) {
+                allRecords = allRecords.filter(r => 
+                    r.id.toLowerCase().includes(search) || 
+                    r.units.toLowerCase().includes(search) || 
+                    r.detail.toLowerCase().includes(search)
+                );
+            }
+
+            if (allRecords.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-neutral-500">No matching records found.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = allRecords.map(r => `
+                <tr class="hover:bg-neutral-900/50 transition">
+                    <td class="py-3 px-4 font-mono font-bold ${r.category === 'fire' ? 'text-red-500' : 'text-emerald-500'}">${r.id}</td>
+                    <td class="py-3 px-4"><span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${r.category === 'fire' ? 'bg-red-950/80 text-red-400 border border-red-900/40' : 'bg-emerald-950/80 text-emerald-400 border border-emerald-900/40'}">${r.displayType}</span></td>
+                    <td class="py-3 px-4 text-white">${r.detail}</td>
+                    <td class="py-3 px-4 text-neutral-400">${r.units}</td>
+                    <td class="py-3 px-4 text-neutral-400 text-xs">${r.timestamp}</td>
+                    <td class="py-3 px-4 text-right">
+                        ${r.publishedById === appState.userId ? `<button onclick="deleteRecord('${r.id}')" class="text-neutral-500 hover:text-red-500 transition px-2 py-1" title="Delete record you published"><i class="fa-solid fa-trash"></i></button>` : '<span class="text-neutral-700 px-2 py-1" title="Only the publisher can delete this record"><i class="fa-solid fa-lock"></i></span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterRecords() {
+            renderRecordsTable();
+        }
+
+        async function deleteRecord(id) {
+            if (!confirm(`Are you sure you want to delete record ${id}?`)) return;
+            const response = await fetch(`/api/records/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const error = await response.json();
+                alert(error.error || 'Unable to delete this record.');
+                return;
+            }
+            await loadRecords();
+        }
+
+        function renderAnalyticsCharts() {
+            // Fire type breakdown counts
+            const fireTypes = { Structure: 0, Brush: 0, Dumpster: 0, Vehicle: 0, Industrial: 0 };
+            appState.fires.forEach(f => {
+                if (fireTypes[f.type] !== undefined) fireTypes[f.type]++;
+                else fireTypes[f.type] = 1;
+            });
+
+            const fireCanvas = document.getElementById('fireTypeChart').getContext('2d');
+            if (charts.fire) charts.fire.destroy();
+            charts.fire = new Chart(fireCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(fireTypes),
+                    datasets: [{
+                        data: Object.values(fireTypes),
+                        backgroundColor: ['#dc2626', '#ea580c', '#d97706', '#ca8a04', '#9333ea'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#a3a3a3', boxWidth: 12 } } }
+                }
+            });
+
+            // Medical survival counts
+            const survivedYes = appState.medicals.filter(m => m.survived === 'Yes').length;
+            const survivedNo = appState.medicals.filter(m => m.survived === 'No').length;
+
+            const medCanvas = document.getElementById('medSurvivalChart').getContext('2d');
+            if (charts.med) charts.med.destroy();
+            charts.med = new Chart(medCanvas, {
+                type: 'pie',
+                data: {
+                    labels: ['Survived', 'Expired'],
+                    datasets: [{
+                        data: [survivedYes || 1, survivedNo],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#a3a3a3', boxWidth: 12 } } }
+                }
+            });
+        }
+
+        function setERLCStatus(status, className, serverName = '--', playerCount = '--', callCount = '--') {
+            document.getElementById('proxyState').innerText = status;
+            document.getElementById('proxyState').className = `${className} font-medium`;
+            document.getElementById('serverNameLabel').innerText = serverName;
+            document.getElementById('serverPlayerCount').innerText = playerCount;
+            document.getElementById('serverCallCount').innerText = callCount;
+        }
+
+        async function syncERLCData() {
+            if (erlcSyncInFlight) return;
+            erlcSyncInFlight = true;
+            try {
+                const res = await fetch('/api/erlc/status', { cache: 'no-store' });
+                const data = await res.json();
+
+                if (!res.ok || data.error) {
+                    const notConfigured = data.error && data.error.includes('not configured');
+                    setERLCStatus(notConfigured ? 'Not configured' : 'Offline / Error', notConfigured ? 'text-amber-400' : 'text-red-400');
+                    document.getElementById('kpiActiveUnits').innerText = '--';
+                    const errorMessage = notConfigured ? 'Configure ERLC_SERVER_KEY in your .env file.' : 'The ER:LC server API is unavailable.';
+                    document.getElementById('erlcUnitsTable').innerHTML = `<tr><td colspan="5" class="py-6 text-center ${notConfigured ? 'text-amber-500' : 'text-red-400'} text-xs">${errorMessage}</td></tr>`;
+                    return;
+                }
+
+                const players = Array.isArray(data.Players) ? data.Players : [];
+                const emergencyCalls = Array.isArray(data.EmergencyCalls) ? data.EmergencyCalls : [];
+                const serverName = data.ServerName || data.Name || data.Server || '--';
+                setERLCStatus('Connected', 'text-emerald-400', serverName, players.length, emergencyCalls.length);
+                {
+                    const fireEmsPlayers = players.filter(p => p.Team === 'Fire' || p.Team === 'EMS' || p.Team === 'Police');
+                    const vehicles = Array.isArray(data.Vehicles) ? data.Vehicles : [];
+                    const getPlayerName = player => String(player.Player || player.Username || player.Name || '').split(':')[0];
+                    const getVehicleOwner = vehicle => String(vehicle.Owner || vehicle.Player || vehicle.Username || '').split(':')[0];
+                    const getVehicleName = vehicle => vehicle.Name || vehicle.Vehicle || vehicle.Model || 'Vehicle unavailable';
+                    const findVehicle = player => {
+                        const playerName = getPlayerName(player).toLowerCase();
+                        return vehicles.find(vehicle => getVehicleOwner(vehicle).toLowerCase() === playerName);
+                    };
+                    document.getElementById('kpiActiveUnits').innerText = fireEmsPlayers.length;
+                    const unitsTable = document.getElementById('erlcUnitsTable');
+                    if (fireEmsPlayers.length === 0) {
+                        unitsTable.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-neutral-500 text-xs">No Fire/EMS units currently active in-game.</td></tr>`;
+                    } else {
+                        unitsTable.innerHTML = fireEmsPlayers.map(p => `
+                            <tr class="hover:bg-neutral-900/50">
+                                <td class="py-2.5 px-3 font-medium text-white">${getPlayerName(p) || 'Unknown player'}</td>
+                                <td class="py-2.5 px-3 text-neutral-300">${p.Callsign || p.CallSign || p.callsign || '-'}</td>
+                                <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-xs bg-neutral-800 text-neutral-300">${p.Team}</span></td>
+                                <td class="py-2.5 px-3 text-neutral-300">${findVehicle(p) ? getVehicleName(findVehicle(p)) : 'On foot'}</td>
+                                <td class="py-2.5 px-3 text-emerald-400 text-xs">On Duty</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error("ERLC Sync Error:", err);
+                setERLCStatus('Offline / Error', 'text-red-400');
+                document.getElementById('kpiActiveUnits').innerText = '--';
+                document.getElementById('erlcUnitsTable').innerHTML = `<tr><td colspan="5" class="py-6 text-center text-red-400 text-xs">Unable to reach the ER:LC server API.</td></tr>`;
+            } finally {
+                erlcSyncInFlight = false;
+            }
+        }
+
+        async function loadRecords() {
+            const response = await fetch('/api/records');
+            const records = await response.json();
+            appState.fires = records.filter(record => record.category === 'fire');
+            appState.medicals = records.filter(record => record.category === 'medical');
+            appState.fireSeq = Math.max(0, ...appState.fires.map(record => Number(record.id.slice(1)))) + 1;
+            appState.medSeq = Math.max(0, ...appState.medicals.map(record => Number(record.id.slice(3)))) + 1;
+            updateCaseNumberFields();
+            updateDashboard();
+            renderRecordsTable();
+        }
+
+        async function loadAuth() {
+            const response = await fetch('/api/auth/me');
+            const data = await response.json();
+            appState.userId = data.user ? data.user.id : null;
+            const authButton = document.getElementById('authButton');
+            const logoutButton = document.getElementById('logoutButton');
+            if (data.user) {
+                logoutButton.classList.remove('hidden');
+            }
+        }
+
+        async function publishRecord(record) {
+            const response = await fetch('/api/records', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(record)
+            });
+            if (response.status === 401) {
+                alert('Sign in with Roblox before publishing a record.');
+                return false;
+            }
+            if (!response.ok) {
+                const error = await response.json();
+                alert(error.error || 'Unable to publish this record.');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>
