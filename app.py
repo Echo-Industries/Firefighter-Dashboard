@@ -56,7 +56,16 @@ def login_required(handler):
 @app.route("/")
 def index():
     """Serves the main Station 7 Portal frontend interface."""
+    if not current_user():
+        return redirect(url_for("login"))
     return render_template("index.html")
+
+
+@app.route("/login")
+def login():
+    if current_user():
+        return redirect(url_for("index"))
+    return render_template("login.html")
 
 
 @app.route("/auth/roblox/login")
@@ -114,9 +123,25 @@ def roblox_callback():
     except (requests.RequestException, KeyError) as error:
         return f"Roblox sign-in failed: {error}", 502
 
+    user_id = str(user_data["sub"])
+    avatar_url = None
+    try:
+        avatar_response = requests.get(
+            "https://thumbnails.roblox.com/v1/users/avatar-headshot",
+            params={"userIds": user_id, "size": "150x150", "format": "Png", "isCircular": "false"},
+            timeout=10,
+        )
+        avatar_response.raise_for_status()
+        avatar_data = avatar_response.json().get("data", [])
+        if avatar_data:
+            avatar_url = avatar_data[0].get("imageUrl")
+    except (requests.RequestException, ValueError):
+        pass
+
     session["roblox_user"] = {
-        "id": str(user_data["sub"]),
+        "id": user_id,
         "name": user_data.get("preferred_username") or user_data.get("name") or "Roblox user",
+        "avatarUrl": avatar_url,
     }
     return redirect(url_for("index"))
 
@@ -124,7 +149,7 @@ def roblox_callback():
 @app.route("/auth/logout")
 def logout():
     session.pop("roblox_user", None)
-    return redirect(url_for("index"))
+    return redirect(url_for("login"))
 
 
 @app.route("/api/auth/me")
@@ -133,6 +158,7 @@ def auth_me():
 
 
 @app.route("/api/records", methods=["GET"])
+@login_required
 def list_records():
     database = get_db()
     rows = database.execute("SELECT payload FROM records ORDER BY created_at DESC").fetchall()
@@ -184,6 +210,7 @@ def delete_record(record_id):
 
 
 @app.route("/api/erlc/status", methods=["GET"])
+@login_required
 def get_erlc_status():
     """Proxy endpoint to fetch live player lists, active units, and emergency calls from ER:LC securely."""
     if not ERLC_API_KEY or ERLC_API_KEY == "your_actual_erlc_server_key_here":

@@ -25,13 +25,14 @@ Start the app with:
 python app.py
 ```
 
-Open `http://localhost:5000`, then select **Sign in with Roblox**. The app stores the Roblox subject/user id in the Flask session. That identity is used as the publisher of every record and is checked again on deletion.
+Open `http://localhost:5000`; unauthenticated visitors are sent to the required Roblox login page. After signing in, the account headshot opens a menu showing the signed-in username and a **Sign out** action that returns to the login page. The app stores the Roblox subject/user id in the Flask session. That identity is used as the publisher of every record and is checked again on deletion.
 
 ## Records and deletion rules
 
 Records are stored in the SQLite database at `DATABASE_PATH`, not in browser `localStorage`.
 
 - `POST /api/records` requires a Roblox sign-in and stamps the record with `publishedById` and `publishedByName`.
+- Every fire and medical record automatically includes the signed-in Roblox username in `units`. Additional units can be selected from the checkbox dropdown, which is populated from currently active Fire, EMS, and Police players returned by ER:LC.
 - `DELETE /api/records/<id>` only succeeds when the signed-in Roblox user owns that record. Other users see a lock icon and the server returns `403` even if a request is sent manually.
 - The ER:LC server API identifies the configured game server through `ERLC_SERVER_KEY`. Roblox OAuth identifies the dashboard operator; the ER:LC API does not receive the OAuth token.
 
