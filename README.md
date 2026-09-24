@@ -11,6 +11,7 @@ A Flask dashboard for live ER:LC server telemetry and Roblox-authenticated fire/
 
 ```env
 ERLC_SERVER_KEY=your_er_lc_server_key
+FD_TEAM_NAME=Fire
 FLASK_SECRET_KEY=use-a-long-random-value
 ROBLOX_CLIENT_ID=your_roblox_oauth_client_id
 ROBLOX_CLIENT_SECRET=your_roblox_oauth_client_secret
@@ -32,6 +33,7 @@ Open `http://localhost:5000`; unauthenticated visitors are sent to the required 
 Records are stored in the SQLite database at `DATABASE_PATH`, not in browser `localStorage`.
 
 - `POST /api/records` requires a Roblox sign-in and stamps the record with `publishedById` and `publishedByName`.
+- `POST /api/records` also verifies that the signed-in Roblox user is currently on the configured `FD_TEAM_NAME` team in ER:LC. Publishing is denied if the live team check fails or the user is not on that team.
 - Every fire and medical record automatically includes the signed-in Roblox username in `units`. Additional units can be selected from the checkbox dropdown, which is populated from currently active Fire, EMS, and Police players returned by ER:LC.
 - `DELETE /api/records/<id>` only succeeds when the signed-in Roblox user owns that record. Other users see a lock icon and the server returns `403` even if a request is sent manually.
 - The ER:LC server API identifies the configured game server through `ERLC_SERVER_KEY`. Roblox OAuth identifies the dashboard operator; the ER:LC API does not receive the OAuth token.

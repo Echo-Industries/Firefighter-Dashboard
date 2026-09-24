@@ -19,6 +19,7 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "firefighter_dashboard.db")
 ROBLOX_CLIENT_ID = os.getenv("ROBLOX_CLIENT_ID")
 ROBLOX_CLIENT_SECRET = os.getenv("ROBLOX_CLIENT_SECRET")
 ROBLOX_REDIRECT_URI = os.getenv("ROBLOX_REDIRECT_URI")
+FD_TEAM_NAME = os.getenv("FD_TEAM_NAME", "Fire")
 
 
 def get_db():
@@ -51,6 +52,36 @@ def login_required(handler):
         return handler(*args, **kwargs)
 
     return wrapped
+
+
+def fd_team_member(user):
+    if not ERLC_API_KEY or ERLC_API_KEY == "your_actual_erlc_server_key_here":
+        return False, "ER:LC server verification is not configured."
+
+    try:
+        response = requests.get(
+            "https://api.erlc.gg/v2/server?Players=true",
+            headers={"server-key": ERLC_API_KEY},
+            timeout=10,
+        )
+        response.raise_for_status()
+        players = response.json().get("Players", [])
+    except (requests.RequestException, ValueError, AttributeError):
+        return False, "Unable to verify your current ER:LC team."
+
+    user_id = str(user.get("id", ""))
+    user_name = str(user.get("name", "")).casefold()
+    for player in players:
+        if not isinstance(player, dict) or player.get("Team") != FD_TEAM_NAME:
+            continue
+
+        player_value = str(player.get("Player", ""))
+        player_name, _, player_id = player_value.partition(":")
+        known_id = str(player.get("UserId") or player.get("UserID") or player.get("id") or player_id)
+        if (known_id and known_id == user_id) or player_name.casefold() == user_name:
+            return True, None
+
+    return False, f"You must be on the {FD_TEAM_NAME} team in ER:LC to publish a log."
 
 
 @app.route("/")
@@ -178,6 +209,10 @@ def publish_record():
         return jsonify({"error": "Record id and category are required."}), 400
 
     user = current_user()
+    is_fd_member, membership_error = fd_team_member(user)
+    if not is_fd_member:
+        return jsonify({"error": membership_error}), 403
+
     record["publishedById"] = user["id"]
     record["publishedByName"] = user["name"]
     database = get_db()
